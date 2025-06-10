@@ -114,7 +114,10 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Color(0xFFFF6B35),
         elevation: 0,
         actions: [
-          IconButton(icon: Icon(Icons.notifications), onPressed: () {}),
+          IconButton(
+            icon: Icon(Icons.add_box),
+            onPressed: () => _showTableCombinationDialog(),
+          ),
           IconButton(icon: Icon(Icons.account_circle), onPressed: () {}),
         ],
       ),
@@ -166,16 +169,60 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
-              child: GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.0,
-                ),
-                itemCount: tables.length,
-                itemBuilder: (context, index) {
-                  return _buildTableCard(tables[index], index);
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final crossAxisCount = 4;
+                  final spacing = 12.0;
+                  final itemWidth =
+                      (constraints.maxWidth -
+                          (spacing * (crossAxisCount - 1))) /
+                      crossAxisCount;
+
+                  return SingleChildScrollView(
+                    child: Wrap(
+                      spacing: spacing,
+                      runSpacing: spacing,
+                      children: List.generate(tables.length, (index) {
+                        final table = tables[index];
+
+                        // Skip if this table is part of a combination
+                        if (table.customerName.startsWith('Part of')) {
+                          return SizedBox.shrink();
+                        }
+
+                        // Handle combined tables
+                        if (table.customerName.startsWith('Combined Tables')) {
+                          // Extract table numbers from the name
+                          final tableNumbers =
+                              table.customerName
+                                  .split(' - ')[0]
+                                  .replaceAll('Combined Tables ', '')
+                                  .split('-')
+                                  .map((e) => int.parse(e))
+                                  .toList();
+
+                          // Calculate the width of the combined table
+                          final span =
+                              tableNumbers.last - tableNumbers.first + 1;
+                          final width =
+                              (itemWidth * span) + (spacing * (span - 1));
+
+                          return Container(
+                            width: width,
+                            height: itemWidth,
+                            child: _buildCombinedTableCard(table, tableNumbers),
+                          );
+                        }
+
+                        // Regular table
+                        return SizedBox(
+                          width: itemWidth,
+                          height: itemWidth,
+                          child: _buildTableCard(table, index),
+                        );
+                      }),
+                    ),
+                  );
                 },
               ),
             ),
@@ -215,6 +262,8 @@ class _HomeScreenState extends State<HomeScreen> {
     Color cardColor = Colors.grey[100]!;
     Color textColor = Colors.grey[600]!;
     IconData statusIcon = Icons.event_seat;
+    bool isPartOfCombined = table.customerName.startsWith('Part of');
+    bool isMainCombined = table.customerName.startsWith('Combined Tables');
 
     switch (table.status) {
       case models.TableStatus.empty:
@@ -223,9 +272,19 @@ class _HomeScreenState extends State<HomeScreen> {
         statusIcon = Icons.event_seat;
         break;
       case models.TableStatus.occupied:
-        cardColor = Color(0xFFE8F5E8);
-        textColor = Color(0xFF2E7D32);
-        statusIcon = Icons.people;
+        if (isPartOfCombined) {
+          cardColor = Color(0xFFE8F5E8).withOpacity(0.5);
+          textColor = Color(0xFF2E7D32).withOpacity(0.5);
+          statusIcon = Icons.people;
+        } else if (isMainCombined) {
+          cardColor = Color(0xFFE8F5E8);
+          textColor = Color(0xFF2E7D32);
+          statusIcon = Icons.people;
+        } else {
+          cardColor = Color(0xFFE8F5E8);
+          textColor = Color(0xFF2E7D32);
+          statusIcon = Icons.people;
+        }
         break;
       case models.TableStatus.reserved:
         cardColor = Color(0xFFFFF3E0);
@@ -258,14 +317,15 @@ class _HomeScreenState extends State<HomeScreen> {
             Icon(statusIcon, color: textColor, size: 24),
             SizedBox(height: 4),
             Text(
-              'T${table.number}',
+              isPartOfCombined ? '' : 'T${table.number}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: textColor,
                 fontSize: 14,
               ),
             ),
-            if (table.status == models.TableStatus.occupied) ...[
+            if (table.status == models.TableStatus.occupied &&
+                !isPartOfCombined) ...[
               SizedBox(height: 2),
               Text(
                 '${table.guestCount}',
@@ -302,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Text('Customer Details - Table ${table.number}'),
+          title: Text('Customer Details - ${table.customerName}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -310,7 +370,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: nameController,
                 decoration: InputDecoration(
                   labelText: 'Customer Name',
-                  prefixIcon: Icon(Icons.person),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -319,26 +378,24 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(height: 16),
               TextField(
                 controller: phoneController,
-                keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   labelText: 'Phone Number',
-                  prefixIcon: Icon(Icons.phone),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                keyboardType: TextInputType.phone,
               ),
               SizedBox(height: 16),
               TextField(
                 controller: guestController,
-                keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Number of Guests',
-                  prefixIcon: Icon(Icons.group),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                keyboardType: TextInputType.number,
               ),
             ],
           ),
@@ -354,10 +411,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     guestController.text.isNotEmpty) {
                   setState(() {
                     tables[index] = tables[index].copyWith(
-                      status: models.TableStatus.occupied,
                       customerName: nameController.text,
                       phoneNumber: phoneController.text,
-                      guestCount: int.parse(guestController.text),
+                      guestCount: int.tryParse(guestController.text) ?? 0,
                     );
                   });
                   Navigator.pop(context);
@@ -451,5 +507,339 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
       ),
     );
+  }
+
+  void _showTableCombinationDialog() {
+    List<int> selectedTables = [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            bool isTableSelectionValid(int tableNumber) {
+              if (selectedTables.isEmpty) return true;
+
+              // Check if the table is adjacent to any selected table
+              return selectedTables.any(
+                (selected) =>
+                    (tableNumber == selected + 1) ||
+                    (tableNumber == selected - 1),
+              );
+            }
+
+            void handleTableSelection(int tableNumber) {
+              final isOccupied =
+                  tables[tableNumber - 1].status == models.TableStatus.occupied;
+
+              if (isOccupied) return;
+
+              if (selectedTables.contains(tableNumber)) {
+                setState(() {
+                  selectedTables.remove(tableNumber);
+                });
+              } else {
+                if (isTableSelectionValid(tableNumber)) {
+                  setState(() {
+                    selectedTables.add(tableNumber);
+                    // Sort tables to maintain continuous order
+                    selectedTables.sort();
+                  });
+                }
+              }
+            }
+
+            return Container(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Combine Tables',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Select tables in continuous order (minimum 2 tables required)',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
+                  SizedBox(height: 20),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: List.generate(tables.length, (index) {
+                      final tableNumber = index + 1;
+                      final isSelected = selectedTables.contains(tableNumber);
+                      final isOccupied =
+                          tables[index].status == models.TableStatus.occupied;
+
+                      return FilterChip(
+                        label: Text('Table $tableNumber'),
+                        selected: isSelected,
+                        onSelected:
+                            (selected) => handleTableSelection(tableNumber),
+                        selectedColor: Color(0xFFFF6B35).withOpacity(0.2),
+                        checkmarkColor: Color(0xFFFF6B35),
+                        disabledColor: Colors.grey[300],
+                        labelStyle: TextStyle(
+                          color: isOccupied ? Colors.grey : Colors.black,
+                        ),
+                      );
+                    }),
+                  ),
+                  SizedBox(height: 30),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text('Cancel'),
+                      ),
+                      SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed:
+                            selectedTables.length >= 2
+                                ? () {
+                                  Navigator.pop(
+                                    context,
+                                  ); // Close combination dialog
+                                  _showCombinedTableOptionsDialog(
+                                    selectedTables,
+                                  );
+                                }
+                                : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFFF6B35),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text('Combine'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCombinedTableCard(models.Table table, List<int> tableNumbers) {
+    return GestureDetector(
+      onTap: () => _handleTableTap(table, tableNumbers.first - 1),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Color(0xFFE8F5E8),
+          borderRadius: BorderRadius.circular(16),
+          border:
+              selectedTableIndex == tableNumbers.first - 1
+                  ? Border.all(color: Color(0xFFFF6B35), width: 2)
+                  : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people, color: Color(0xFF2E7D32), size: 24),
+            SizedBox(height: 4),
+            Text(
+              'Combined\nT${tableNumbers.join("-")}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2E7D32),
+                fontSize: 14,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              '${table.guestCount} guests',
+              style: TextStyle(color: Color(0xFF2E7D32), fontSize: 10),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCombinedTableOptionsDialog(List<int> tableNumbers) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text('Combined Tables ${tableNumbers.join("-")}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Number of Tables: ${tableNumbers.length}'),
+              Text('Total Capacity: ${tableNumbers.length * 2} guests'),
+              SizedBox(height: 20),
+              Text(
+                'Would you like to proceed with taking the order?',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // Close options dialog
+                _showCustomerDetailsDialogForCombinedTables(tableNumbers);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF6B35),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text('Take Order'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showCustomerDetailsDialogForCombinedTables(List<int> tableNumbers) {
+    TextEditingController nameController = TextEditingController();
+    TextEditingController phoneController = TextEditingController();
+    TextEditingController guestController = TextEditingController(
+      text: (tableNumbers.length * 2).toString(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Customer Details - Combined Tables ${tableNumbers.join("-")}',
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Customer Name',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: phoneController,
+                decoration: InputDecoration(
+                  labelText: 'Phone Number',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: guestController,
+                decoration: InputDecoration(
+                  labelText: 'Number of Guests',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                keyboardType: TextInputType.number,
+                readOnly: false,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameController.text.isNotEmpty &&
+                    phoneController.text.isNotEmpty) {
+                  _combineTables(
+                    tableNumbers,
+                    nameController.text,
+                    phoneController.text,
+                  );
+                  Navigator.pop(context); // Close customer details dialog
+                  // Navigate to order screen for the first table in the combination
+                  _navigateToOrderScreen(
+                    tables[tableNumbers.first - 1],
+                    tableNumbers.first - 1,
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF6B35),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text('Start Order'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _combineTables(
+    List<int> tableNumbers,
+    String customerName,
+    String phoneNumber,
+  ) {
+    // Find the first table in the sequence
+    final firstTableIndex = tableNumbers.first - 1;
+
+    setState(() {
+      // Update the first table to show combined status
+      tables[firstTableIndex] = tables[firstTableIndex].copyWith(
+        status: models.TableStatus.occupied,
+        customerName:
+            'Combined Tables ${tableNumbers.join("-")} - $customerName',
+        phoneNumber: phoneNumber,
+        guestCount: tableNumbers.length * 2, // Assuming 2 guests per table
+      );
+
+      // Mark other tables as occupied but with a special status
+      for (int i = 1; i < tableNumbers.length; i++) {
+        int tableIndex = tableNumbers[i] - 1;
+        tables[tableIndex] = tables[tableIndex].copyWith(
+          status: models.TableStatus.occupied,
+          customerName: 'Part of ${tableNumbers.first}',
+          phoneNumber: '',
+          guestCount: 0,
+        );
+      }
+    });
   }
 }
