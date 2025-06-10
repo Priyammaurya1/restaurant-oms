@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/restaurant_models.dart' as models;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -9,7 +10,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Table> tables = [];
+  List<models.Table> tables = [];
   int selectedTableIndex = -1;
 
   @override
@@ -21,9 +22,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _initializeTables() {
     tables = List.generate(
       20,
-      (index) => Table(
+      (index) => models.Table(
         number: index + 1,
-        status: TableStatus.empty,
+        status: models.TableStatus.empty,
         customerName: '',
         phoneNumber: '',
         guestCount: 0,
@@ -34,26 +35,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Set 2 random tables as occupied with sample data
     tables[4] = tables[4].copyWith(
-      status: TableStatus.occupied,
+      status: models.TableStatus.occupied,
       customerName: 'Raj Kumar',
       phoneNumber: '9876543210',
       guestCount: 4,
       orders: [
-        OrderItem(
+        models.OrderItem(
           id: '1',
           itemId: '4',
           itemName: 'Butter Chicken',
           price: 380,
           quantity: 1,
         ),
-        OrderItem(
+        models.OrderItem(
           id: '2',
           itemId: '5',
           itemName: 'Biryani',
           price: 350,
           quantity: 2,
         ),
-        OrderItem(
+        models.OrderItem(
           id: '3',
           itemId: '7',
           itemName: 'Mango Lassi',
@@ -65,26 +66,26 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     tables[11] = tables[11].copyWith(
-      status: TableStatus.occupied,
+      status: models.TableStatus.occupied,
       customerName: 'Priya Sharma',
       phoneNumber: '9123456789',
       guestCount: 2,
       orders: [
-        OrderItem(
+        models.OrderItem(
           id: '4',
           itemId: '1',
           itemName: 'Paneer Tikka',
           price: 280,
           quantity: 1,
         ),
-        OrderItem(
+        models.OrderItem(
           id: '5',
           itemId: '6',
           itemName: 'Dal Makhani',
           price: 220,
           quantity: 1,
         ),
-        OrderItem(
+        models.OrderItem(
           id: '6',
           itemId: '8',
           itemName: 'Masala Chai',
@@ -99,9 +100,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     int availableTables =
-        tables.where((t) => t.status == TableStatus.empty).length;
+        tables.where((t) => t.status == models.TableStatus.empty).length;
     int occupiedTables =
-        tables.where((t) => t.status == TableStatus.occupied).length;
+        tables.where((t) => t.status == models.TableStatus.occupied).length;
 
     return Scaffold(
       backgroundColor: Color(0xFFF8F9FA),
@@ -210,23 +211,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTableCard(Table table, int index) {
+  Widget _buildTableCard(models.Table table, int index) {
     Color cardColor;
     Color textColor;
     IconData statusIcon;
 
     switch (table.status) {
-      case TableStatus.empty:
+      case models.TableStatus.empty:
         cardColor = Colors.grey[100]!;
         textColor = Colors.grey[600]!;
         statusIcon = Icons.event_seat;
         break;
-      case TableStatus.occupied:
+      case models.TableStatus.occupied:
         cardColor = Color(0xFFE8F5E8);
         textColor = Color(0xFF2E7D32);
         statusIcon = Icons.people;
         break;
-      case TableStatus.reserved:
+      case models.TableStatus.reserved:
         cardColor = Color(0xFFFFF3E0);
         textColor = Color(0xFFE65100);
         statusIcon = Icons.schedule;
@@ -264,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 14,
               ),
             ),
-            if (table.status == TableStatus.occupied) ...[
+            if (table.status == models.TableStatus.occupied) ...[
               SizedBox(height: 2),
               Text(
                 '${table.guestCount}',
@@ -277,19 +278,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _handleTableTap(Table table, int index) {
+  void _handleTableTap(models.Table table, int index) {
     setState(() {
       selectedTableIndex = index;
     });
 
-    if (table.status == TableStatus.empty) {
+    if (table.status == models.TableStatus.empty) {
       _showCustomerDetailsDialog(table, index);
     } else {
       _showTableOptionsDialog(table, index);
     }
   }
 
-  void _showCustomerDetailsDialog(Table table, int index) {
+  void _showCustomerDetailsDialog(models.Table table, int index) {
     TextEditingController nameController = TextEditingController();
     TextEditingController phoneController = TextEditingController();
     TextEditingController guestController = TextEditingController();
@@ -353,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     guestController.text.isNotEmpty) {
                   setState(() {
                     tables[index] = tables[index].copyWith(
-                      status: TableStatus.occupied,
+                      status: models.TableStatus.occupied,
                       customerName: nameController.text,
                       phoneNumber: phoneController.text,
                       guestCount: int.parse(guestController.text),
@@ -377,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showTableOptionsDialog(Table table, int index) {
+  void _showTableOptionsDialog(models.Table table, int index) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -435,7 +436,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _navigateToOrderScreen(Table table, int index) {
+  void _navigateToOrderScreen(models.Table table, int index) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -454,8 +455,8 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class OrderScreen extends StatefulWidget {
-  final Table table;
-  final Function(Table) onOrderUpdate;
+  final models.Table table;
+  final Function(models.Table) onOrderUpdate;
 
   const OrderScreen({
     super.key,
@@ -468,9 +469,9 @@ class OrderScreen extends StatefulWidget {
 }
 
 class _OrderScreenState extends State<OrderScreen> {
-  late Table currentTable;
-  List<MenuItem> menuItems = [];
-  List<MenuItem> filteredItems = [];
+  late models.Table currentTable;
+  List<models.MenuItem> menuItems = [];
+  List<models.MenuItem> filteredItems = [];
   String selectedCategory = 'All';
   List<String> categories = [
     'All',
@@ -491,21 +492,21 @@ class _OrderScreenState extends State<OrderScreen> {
   void _initializeMenu() {
     menuItems = [
       // Starters
-      MenuItem(
+      models.MenuItem(
         id: '1',
         name: 'Paneer Tikka',
         price: 280,
         category: 'Starters',
         image: '🧀',
       ),
-      MenuItem(
+      models.MenuItem(
         id: '2',
         name: 'Chicken Wings',
         price: 320,
         category: 'Starters',
         image: '🍗',
       ),
-      MenuItem(
+      models.MenuItem(
         id: '3',
         name: 'Spring Rolls',
         price: 180,
@@ -514,21 +515,21 @@ class _OrderScreenState extends State<OrderScreen> {
       ),
 
       // Main Course
-      MenuItem(
+      models.MenuItem(
         id: '4',
         name: 'Butter Chicken',
         price: 380,
         category: 'Main Course',
         image: '🍛',
       ),
-      MenuItem(
+      models.MenuItem(
         id: '5',
         name: 'Biryani',
         price: 350,
         category: 'Main Course',
         image: '🍚',
       ),
-      MenuItem(
+      models.MenuItem(
         id: '6',
         name: 'Dal Makhani',
         price: 220,
@@ -537,21 +538,21 @@ class _OrderScreenState extends State<OrderScreen> {
       ),
 
       // Beverages
-      MenuItem(
+      models.MenuItem(
         id: '7',
         name: 'Mango Lassi',
         price: 120,
         category: 'Beverages',
         image: '🥤',
       ),
-      MenuItem(
+      models.MenuItem(
         id: '8',
         name: 'Masala Chai',
         price: 80,
         category: 'Beverages',
         image: '☕',
       ),
-      MenuItem(
+      models.MenuItem(
         id: '9',
         name: 'Fresh Lime',
         price: 90,
@@ -560,14 +561,14 @@ class _OrderScreenState extends State<OrderScreen> {
       ),
 
       // Desserts
-      MenuItem(
+      models.MenuItem(
         id: '10',
         name: 'Gulab Jamun',
         price: 140,
         category: 'Desserts',
         image: '🍯',
       ),
-      MenuItem(
+      models.MenuItem(
         id: '11',
         name: 'Ice Cream',
         price: 120,
@@ -708,7 +709,7 @@ class _OrderScreenState extends State<OrderScreen> {
     );
   }
 
-  Widget _buildMenuItemCard(MenuItem item) {
+  Widget _buildMenuItemCard(models.MenuItem item) {
     int quantity = _getItemQuantity(item.id);
 
     return Container(
@@ -803,10 +804,10 @@ class _OrderScreenState extends State<OrderScreen> {
     return currentTable.orders.where((order) => order.itemId == itemId).length;
   }
 
-  void _addItem(MenuItem item) {
+  void _addItem(models.MenuItem item) {
     setState(() {
       currentTable.orders.add(
-        OrderItem(
+        models.OrderItem(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           itemId: item.id,
           itemName: item.name,
@@ -818,7 +819,7 @@ class _OrderScreenState extends State<OrderScreen> {
     HapticFeedback.lightImpact();
   }
 
-  void _removeItem(MenuItem item) {
+  void _removeItem(models.MenuItem item) {
     setState(() {
       int index = currentTable.orders.indexWhere(
         (order) => order.itemId == item.id,
@@ -846,7 +847,7 @@ class _OrderScreenState extends State<OrderScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        Map<String, List<OrderItem>> groupedOrders = {};
+        Map<String, List<models.OrderItem>> groupedOrders = {};
         for (var order in currentTable.orders) {
           if (groupedOrders.containsKey(order.itemName)) {
             groupedOrders[order.itemName]!.add(order);
@@ -899,7 +900,7 @@ class _OrderScreenState extends State<OrderScreen> {
                   itemCount: groupedOrders.length,
                   itemBuilder: (context, index) {
                     String itemName = groupedOrders.keys.elementAt(index);
-                    List<OrderItem> orders = groupedOrders[itemName]!;
+                    List<models.OrderItem> orders = groupedOrders[itemName]!;
                     return ListTile(
                       title: Text(itemName),
                       subtitle: Text('₹${orders.first.price} each'),
@@ -961,7 +962,7 @@ class _OrderScreenState extends State<OrderScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            Map<String, List<OrderItem>> groupedOrders = {};
+            Map<String, List<models.OrderItem>> groupedOrders = {};
             for (var order in currentTable.orders) {
               if (groupedOrders.containsKey(order.itemName)) {
                 groupedOrders[order.itemName]!.add(order);
@@ -982,7 +983,7 @@ class _OrderScreenState extends State<OrderScreen> {
                   itemCount: groupedOrders.length,
                   itemBuilder: (context, index) {
                     String itemName = groupedOrders.keys.elementAt(index);
-                    List<OrderItem> orders = groupedOrders[itemName]!;
+                    List<models.OrderItem> orders = groupedOrders[itemName]!;
                     return ListTile(
                       title: Text(itemName),
                       subtitle: Text('₹${orders.first.price} each'),
@@ -1013,11 +1014,12 @@ class _OrderScreenState extends State<OrderScreen> {
                             onPressed: () {
                               setState(() {
                                 this.setState(() {
-                                  MenuItem menuItem = menuItems.firstWhere(
-                                    (item) => item.name == itemName,
-                                  );
+                                  models.MenuItem menuItem = menuItems
+                                      .firstWhere(
+                                        (item) => item.name == itemName,
+                                      );
                                   currentTable.orders.add(
-                                    OrderItem(
+                                    models.OrderItem(
                                       id:
                                           DateTime.now().millisecondsSinceEpoch
                                               .toString(),
@@ -1056,7 +1058,10 @@ class _OrderScreenState extends State<OrderScreen> {
 
   void _sendOrderToKitchen() {
     setState(() {
-      currentTable = currentTable.copyWith(orderSentTime: DateTime.now());
+      currentTable = currentTable.copyWith(
+        orderSentTime: DateTime.now(),
+        orders: [], // Reset orders after sending to kitchen
+      );
     });
     widget.onOrderUpdate(currentTable);
 
@@ -1088,8 +1093,8 @@ class _OrderScreenState extends State<OrderScreen> {
 }
 
 class BillingScreen extends StatefulWidget {
-  final Table table;
-  final Function(Table) onBillingComplete;
+  final models.Table table;
+  final Function(models.Table) onBillingComplete;
 
   const BillingScreen({
     super.key,
@@ -1107,7 +1112,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    Map<String, List<OrderItem>> groupedOrders = {};
+    Map<String, List<models.OrderItem>> groupedOrders = {};
     for (var order in widget.table.orders) {
       if (groupedOrders.containsKey(order.itemName)) {
         groupedOrders[order.itemName]!.add(order);
@@ -1241,7 +1246,7 @@ class _BillingScreenState extends State<BillingScreen> {
                         ),
                         ...groupedOrders.entries.map((entry) {
                           String itemName = entry.key;
-                          List<OrderItem> orders = entry.value;
+                          List<models.OrderItem> orders = entry.value;
                           int quantity = orders.length;
                           int price = orders.first.price;
                           int itemTotal = price * quantity;
@@ -1511,8 +1516,8 @@ class _BillingScreenState extends State<BillingScreen> {
                 Navigator.pop(context);
 
                 // Clear the table
-                Table clearedTable = widget.table.copyWith(
-                  status: TableStatus.empty,
+                models.Table clearedTable = widget.table.copyWith(
+                  status: models.TableStatus.empty,
                   customerName: '',
                   phoneNumber: '',
                   guestCount: 0,
@@ -1543,79 +1548,4 @@ class _BillingScreenState extends State<BillingScreen> {
       },
     );
   }
-}
-
-// Data Models
-enum TableStatus { empty, occupied, reserved }
-
-class Table {
-  final int number;
-  final TableStatus status;
-  final String customerName;
-  final String phoneNumber;
-  final int guestCount;
-  final List<OrderItem> orders;
-  final DateTime? orderSentTime;
-
-  Table({
-    required this.number,
-    required this.status,
-    required this.customerName,
-    required this.phoneNumber,
-    required this.guestCount,
-    required this.orders,
-    this.orderSentTime,
-  });
-
-  Table copyWith({
-    int? number,
-    TableStatus? status,
-    String? customerName,
-    String? phoneNumber,
-    int? guestCount,
-    List<OrderItem>? orders,
-    DateTime? orderSentTime,
-  }) {
-    return Table(
-      number: number ?? this.number,
-      status: status ?? this.status,
-      customerName: customerName ?? this.customerName,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      guestCount: guestCount ?? this.guestCount,
-      orders: orders ?? this.orders,
-      orderSentTime: orderSentTime ?? this.orderSentTime,
-    );
-  }
-}
-
-class MenuItem {
-  final String id;
-  final String name;
-  final int price;
-  final String category;
-  final String image;
-
-  MenuItem({
-    required this.id,
-    required this.name,
-    required this.price,
-    required this.category,
-    required this.image,
-  });
-}
-
-class OrderItem {
-  final String id;
-  final String itemId;
-  final String itemName;
-  final int price;
-  final int quantity;
-
-  OrderItem({
-    required this.id,
-    required this.itemId,
-    required this.itemName,
-    required this.price,
-    required this.quantity,
-  });
 }
