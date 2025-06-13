@@ -9,6 +9,7 @@ class Table {
   final List<OrderItem> orders;
   final List<OrderItem> sentOrders;
   final DateTime? orderSentTime;
+  final int tip;
 
   Table({
     required this.number,
@@ -19,6 +20,7 @@ class Table {
     required this.orders,
     this.sentOrders = const [],
     this.orderSentTime,
+    this.tip = 0,
   });
 
   Table copyWith({
@@ -30,6 +32,7 @@ class Table {
     List<OrderItem>? orders,
     List<OrderItem>? sentOrders,
     DateTime? orderSentTime,
+    int? tip,
   }) {
     return Table(
       number: number ?? this.number,
@@ -40,6 +43,7 @@ class Table {
       orders: orders ?? this.orders,
       sentOrders: sentOrders ?? this.sentOrders,
       orderSentTime: orderSentTime ?? this.orderSentTime,
+      tip: tip ?? this.tip,
     );
   }
 }
@@ -66,6 +70,7 @@ class OrderItem {
   final String itemName;
   final int price;
   final int quantity;
+  final DateTime sentTime;
 
   OrderItem({
     required this.id,
@@ -73,5 +78,24 @@ class OrderItem {
     required this.itemName,
     required this.price,
     required this.quantity,
+    required this.sentTime,
   });
+
+  OrderItem copyWith({
+    String? id,
+    String? itemId,
+    String? itemName,
+    int? price,
+    int? quantity,
+    DateTime? sentTime,
+  }) {
+    return OrderItem(
+      id: id ?? this.id,
+      itemId: itemId ?? this.itemId,
+      itemName: itemName ?? this.itemName,
+      price: price ?? this.price,
+      quantity: quantity ?? this.quantity,
+      sentTime: sentTime ?? this.sentTime,
+    );
+  }
 }

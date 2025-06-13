@@ -9,14 +9,31 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   List<models.Table> tables = [];
   int selectedTableIndex = -1;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _initializeTables();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 500),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   void _initializeTables() {
@@ -30,11 +47,13 @@ class _HomeScreenState extends State<HomeScreen> {
         guestCount: 0,
         orders: [],
         orderSentTime: null,
+        tip: 0,
       ),
     );
 
     // Set 2 random tables as occupied with sample data
-    tables[4] = tables[4].copyWith(
+    tables[4] = models.Table(
+      number: 5,
       status: models.TableStatus.occupied,
       customerName: 'Raj Kumar',
       phoneNumber: '9876543210',
@@ -46,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
           itemName: 'Butter Chicken',
           price: 380,
           quantity: 1,
+          sentTime: DateTime.now().subtract(Duration(minutes: 5)),
         ),
         models.OrderItem(
           id: '2',
@@ -53,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
           itemName: 'Biryani',
           price: 350,
           quantity: 2,
+          sentTime: DateTime.now().subtract(Duration(minutes: 5)),
         ),
         models.OrderItem(
           id: '3',
@@ -60,12 +81,15 @@ class _HomeScreenState extends State<HomeScreen> {
           itemName: 'Mango Lassi',
           price: 120,
           quantity: 3,
+          sentTime: DateTime.now().subtract(Duration(minutes: 5)),
         ),
       ],
       orderSentTime: DateTime.now().subtract(Duration(minutes: 5)),
+      tip: 0,
     );
 
-    tables[11] = tables[11].copyWith(
+    tables[11] = models.Table(
+      number: 12,
       status: models.TableStatus.occupied,
       customerName: 'Priya Sharma',
       phoneNumber: '9123456789',
@@ -77,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
           itemName: 'Paneer Tikka',
           price: 280,
           quantity: 1,
+          sentTime: DateTime.now().subtract(Duration(minutes: 10)),
         ),
         models.OrderItem(
           id: '5',
@@ -84,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
           itemName: 'Dal Makhani',
           price: 220,
           quantity: 1,
+          sentTime: DateTime.now().subtract(Duration(minutes: 10)),
         ),
         models.OrderItem(
           id: '6',
@@ -91,10 +117,83 @@ class _HomeScreenState extends State<HomeScreen> {
           itemName: 'Masala Chai',
           price: 80,
           quantity: 2,
+          sentTime: DateTime.now().subtract(Duration(minutes: 10)),
         ),
       ],
       orderSentTime: DateTime.now().subtract(Duration(minutes: 10)),
+      tip: 0,
     );
+  }
+
+  // Add this method to properly reset combined tables
+  void _resetCombinedTables(int mainTableIndex) {
+    final mainTable = tables[mainTableIndex];
+
+    // Check if this is a combined table
+    if (mainTable.customerName.contains('Combined Tables')) {
+      // Extract table numbers from the name
+      try {
+        final tableNumbers =
+            mainTable.customerName
+                .split(' - ')[0]
+                .replaceAll('Combined Tables ', '')
+                .split('-')
+                .map((e) => int.parse(e.trim()))
+                .toList();
+
+        setState(() {
+          // Reset all tables in the combination
+          for (int tableNum in tableNumbers) {
+            int tableIndex = tableNum - 1;
+            if (tableIndex >= 0 && tableIndex < tables.length) {
+              tables[tableIndex] = models.Table(
+                number: tableNum,
+                status: models.TableStatus.empty,
+                customerName: '',
+                phoneNumber: '',
+                guestCount: 0,
+                orders: [],
+                orderSentTime: null,
+                tip: 0,
+              );
+            }
+          }
+        });
+      } catch (e) {
+        // Fallback: reset just the main table if parsing fails
+        setState(() {
+          tables[mainTableIndex] = models.Table(
+            number: mainTableIndex + 1,
+            status: models.TableStatus.empty,
+            customerName: '',
+            phoneNumber: '',
+            guestCount: 0,
+            orders: [],
+            orderSentTime: null,
+            tip: 0,
+          );
+        });
+      }
+    } else {
+      // Regular table reset
+      setState(() {
+        tables[mainTableIndex] = models.Table(
+          number: mainTableIndex + 1,
+          status: models.TableStatus.empty,
+          customerName: '',
+          phoneNumber: '',
+          guestCount: 0,
+          orders: [],
+          orderSentTime: null,
+          tip: 0,
+        );
+      });
+    }
+  }
+
+  // Add this method to be called when any table needs to be reset
+  void resetTable(int tableIndex) {
+    _resetCombinedTables(tableIndex);
   }
 
   @override
@@ -103,172 +202,237 @@ class _HomeScreenState extends State<HomeScreen> {
         tables.where((t) => t.status == models.TableStatus.empty).length;
     int occupiedTables =
         tables.where((t) => t.status == models.TableStatus.occupied).length;
+    int totalTips = tables.fold(0, (sum, table) => sum + table.tip);
 
     return Scaffold(
       backgroundColor: Color(0xFFF8F9FA),
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
         title: Text(
           'Waiter Pro',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color(0xFF1A1A1A),
+            fontWeight: FontWeight.w600,
+            fontSize: 24,
+          ),
         ),
-        backgroundColor: Color(0xFFFF6B35),
-        elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.add_box),
+            icon: Icon(Icons.add_box, color: Color(0xFF1A1A1A)),
             onPressed: () => _showTableCombinationDialog(),
           ),
-          IconButton(icon: Icon(Icons.account_circle), onPressed: () {}),
+          IconButton(
+            icon: Icon(Icons.account_circle, color: Color(0xFF1A1A1A)),
+            onPressed: () {},
+          ),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Color(0xFFFF6B35),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatCard(
-                  'Available Tables',
-                  '$availableTables',
-                  Icons.event_seat,
-                ),
-                _buildStatCard(
-                  'Occupied Tables',
-                  '$occupiedTables',
-                  Icons.people,
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 20),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Tables Overview',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
                   ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 16),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = 4;
-                  final spacing = 12.0;
-                  final itemWidth =
-                      (constraints.maxWidth -
-                          (spacing * (crossAxisCount - 1))) /
-                      crossAxisCount;
-
-                  return SingleChildScrollView(
-                    child: Wrap(
-                      spacing: spacing,
-                      runSpacing: spacing,
-                      children: List.generate(tables.length, (index) {
-                        final table = tables[index];
-
-                        // Skip if this table is part of a combination
-                        if (table.customerName.startsWith('Part of')) {
-                          return SizedBox.shrink();
-                        }
-
-                        // Handle combined tables
-                        if (table.customerName.startsWith('Combined Tables')) {
-                          // Extract table numbers from the name
-                          final tableNumbers =
-                              table.customerName
-                                  .split(' - ')[0]
-                                  .replaceAll('Combined Tables ', '')
-                                  .split('-')
-                                  .map((e) => int.parse(e))
-                                  .toList();
-
-                          // Calculate the width of the combined table
-                          final span =
-                              tableNumbers.last - tableNumbers.first + 1;
-                          final width =
-                              (itemWidth * span) + (spacing * (span - 1));
-
-                          return Container(
-                            width: width,
-                            height: itemWidth,
-                            child: _buildCombinedTableCard(table, tableNumbers),
-                          );
-                        }
-
-                        // Regular table
-                        return SizedBox(
-                          width: itemWidth,
-                          height: itemWidth,
-                          child: _buildTableCard(table, index),
-                        );
-                      }),
-                    ),
-                  );
-                },
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatCard(
+                    'Available',
+                    '$availableTables',
+                    Icons.event_seat,
+                    Color(0xFF4CAF50),
+                  ),
+                  _buildStatCard(
+                    'Occupied',
+                    '$occupiedTables',
+                    Icons.people,
+                    Color(0xFFFF6B35),
+                  ),
+                  _buildStatCard(
+                    'Total Tips',
+                    '₹$totalTips',
+                    Icons.monetization_on,
+                    Color(0xFF2196F3),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Tables Overview',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF0F0F0),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${tables.length} Total',
+                      style: TextStyle(
+                        color: Color(0xFF666666),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Calculate the number of columns based on screen width
+                    final crossAxisCount =
+                        constraints.maxWidth > 800
+                            ? 5
+                            : constraints.maxWidth > 600
+                            ? 4
+                            : 3;
+                    final spacing = 16.0;
+                    final itemWidth =
+                        (constraints.maxWidth -
+                            (spacing * (crossAxisCount - 1))) /
+                        crossAxisCount;
+                    final itemHeight =
+                        itemWidth *
+                        0.95; // Increased from 0.8 to 0.9 for more height
+
+                    return SingleChildScrollView(
+                      physics: BouncingScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Wrap(
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          alignment: WrapAlignment.start,
+                          children: List.generate(tables.length, (index) {
+                            final table = tables[index];
+                            if (table.customerName.startsWith('Part of')) {
+                              return SizedBox.shrink();
+                            }
+
+                            if (table.customerName.startsWith(
+                              'Combined Tables',
+                            )) {
+                              final tableNumbers =
+                                  table.customerName
+                                      .split(' - ')[0]
+                                      .replaceAll('Combined Tables ', '')
+                                      .split('-')
+                                      .map((e) => int.parse(e))
+                                      .toList();
+
+                              final span =
+                                  tableNumbers.last - tableNumbers.first + 1;
+                              final width =
+                                  (itemWidth * span) + (spacing * (span - 1));
+                              // Increase height based on number of combined tables
+                              final combinedHeight =
+                                  itemHeight * (span > 2 ? 1.2 : 1.0);
+
+                              return SizedBox(
+                                width: width,
+                                height: combinedHeight,
+                                child: _buildCombinedTableCard(
+                                  table,
+                                  tableNumbers,
+                                ),
+                              );
+                            }
+
+                            return SizedBox(
+                              width: itemWidth,
+                              height: itemHeight,
+                              child: _buildTableCard(table, index),
+                            );
+                          }),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 24),
-          SizedBox(height: 8),
+          Icon(icon, color: color, size: 28),
+          SizedBox(height: 12),
           Text(
             value,
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
+              color: color,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
-          Text(title, style: TextStyle(color: Colors.white70, fontSize: 12)),
+          SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              color: color.withOpacity(0.8),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildTableCard(models.Table table, int index) {
-    Color cardColor = Colors.grey[100]!;
-    Color textColor = Colors.grey[600]!;
+    Color cardColor = Colors.white;
+    Color textColor = Color(0xFF1A1A1A);
     IconData statusIcon = Icons.event_seat;
     bool isPartOfCombined = table.customerName.startsWith('Part of');
     bool isMainCombined = table.customerName.startsWith('Combined Tables');
 
     switch (table.status) {
       case models.TableStatus.empty:
-        cardColor = Colors.grey[100]!;
-        textColor = Colors.grey[600]!;
+        cardColor = Colors.white;
+        textColor = Color(0xFF666666);
         statusIcon = Icons.event_seat;
         break;
       case models.TableStatus.occupied:
@@ -294,42 +458,61 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return GestureDetector(
-      onTap: () => _handleTableTap(table, index),
-      child: Container(
+      onTap: () => _handleTableTap(index),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border:
               selectedTableIndex == index
                   ? Border.all(color: Color(0xFFFF6B35), width: 2)
-                  : null,
+                  : Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: Offset(0, 2),
+              blurRadius: 10,
+              offset: Offset(0, 4),
             ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(statusIcon, color: textColor, size: 24),
-            SizedBox(height: 4),
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: textColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(statusIcon, color: textColor, size: 20),
+            ),
+            SizedBox(height: 6),
             Text(
               isPartOfCombined ? '' : 'T${table.number}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: textColor,
-                fontSize: 14,
+                fontSize: 15,
               ),
             ),
             if (table.status == models.TableStatus.occupied &&
                 !isPartOfCombined) ...[
-              SizedBox(height: 2),
-              Text(
-                '${table.guestCount}',
-                style: TextStyle(color: textColor, fontSize: 10),
+              SizedBox(height: 4),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: textColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${table.guestCount} guests',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ],
           ],
@@ -338,19 +521,36 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _handleTableTap(models.Table table, int index) {
-    setState(() {
-      selectedTableIndex = index;
-    });
-
-    if (table.status == models.TableStatus.empty) {
-      _showCustomerDetailsDialog(table, index);
+  void _handleTableTap(int index) {
+    if (tables[index].status == models.TableStatus.empty) {
+      _showCustomerDetailsDialog(index);
     } else {
-      _showTableOptionsDialog(table, index);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => OrderScreen(
+                table: tables[index],
+                onOrderUpdate: (updatedTable) {
+                  setState(() {
+                    tables[index] = updatedTable;
+                  });
+                },
+                // Add callback for when order is completed
+                onOrderComplete: () {
+                  _resetCombinedTables(index);
+                },
+                // Add callback for table reset - this handles the actual reset
+                onTableReset: (tableIndex) {
+                  _resetCombinedTables(tableIndex);
+                },
+              ),
+        ),
+      );
     }
   }
 
-  void _showCustomerDetailsDialog(models.Table table, int index) {
+  void _showCustomerDetailsDialog(int index) {
     TextEditingController nameController = TextEditingController();
     TextEditingController phoneController = TextEditingController();
     TextEditingController guestController = TextEditingController();
@@ -362,7 +562,7 @@ class _HomeScreenState extends State<HomeScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Text('Customer Details - ${table.customerName}'),
+          title: Text('Customer Details - ${tables[index].customerName}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -411,13 +611,34 @@ class _HomeScreenState extends State<HomeScreen> {
                     guestController.text.isNotEmpty) {
                   setState(() {
                     tables[index] = tables[index].copyWith(
+                      status: models.TableStatus.occupied,
                       customerName: nameController.text,
                       phoneNumber: phoneController.text,
                       guestCount: int.tryParse(guestController.text) ?? 0,
                     );
                   });
-                  Navigator.pop(context);
-                  _navigateToOrderScreen(tables[index], index);
+                  Navigator.pop(context); // Close the dialog
+                  Navigator.push(
+                    // Navigate directly to OrderScreen
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => OrderScreen(
+                            table: tables[index],
+                            onOrderUpdate: (updatedTable) {
+                              setState(() {
+                                tables[index] = updatedTable;
+                              });
+                            },
+                            onOrderComplete: () {
+                              _resetCombinedTables(index);
+                            },
+                            onTableReset: (tableIndex) {
+                              _resetCombinedTables(tableIndex);
+                            },
+                          ),
+                    ),
+                  );
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -431,81 +652,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         );
       },
-    );
-  }
-
-  void _showTableOptionsDialog(models.Table table, int index) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text('Table ${table.number} - ${table.customerName}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Phone: ${table.phoneNumber}'),
-              Text('Guests: ${table.guestCount}'),
-              Text('Orders: ${table.orders.length}'),
-              SizedBox(height: 10),
-              Text(
-                'Ordered Items:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              ...table.orders.map(
-                (order) => Text('• ${order.itemName} x${order.quantity}'),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Total: ₹${table.orders.fold(0, (sum, order) => sum + (order.price * order.quantity))}',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFFF6B35),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Close'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _navigateToOrderScreen(table, index);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFFF6B35),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text('Take Order'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _navigateToOrderScreen(models.Table table, int index) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => OrderScreen(
-              table: table,
-              onOrderUpdate: (updatedTable) {
-                setState(() {
-                  tables[index] = updatedTable;
-                });
-              },
-            ),
-      ),
     );
   }
 
@@ -634,41 +780,59 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCombinedTableCard(models.Table table, List<int> tableNumbers) {
     return GestureDetector(
-      onTap: () => _handleTableTap(table, tableNumbers.first - 1),
-      child: Container(
+      onTap: () => _handleTableTap(tableNumbers.first - 1),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: Color(0xFFE8F5E8),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border:
               selectedTableIndex == tableNumbers.first - 1
                   ? Border.all(color: Color(0xFFFF6B35), width: 2)
-                  : null,
+                  : Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: Offset(0, 2),
+              blurRadius: 10,
+              offset: Offset(0, 4),
             ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people, color: Color(0xFF2E7D32), size: 24),
-            SizedBox(height: 4),
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Color(0xFF2E7D32).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.people, color: Color(0xFF2E7D32), size: 20),
+            ),
+            SizedBox(height: 8),
             Text(
               'Combined\nT${tableNumbers.join("-")}',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF2E7D32),
-                fontSize: 14,
+                fontSize: 16,
               ),
             ),
-            SizedBox(height: 2),
-            Text(
-              '${table.guestCount} guests',
-              style: TextStyle(color: Color(0xFF2E7D32), fontSize: 10),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Color(0xFF2E7D32).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${table.guestCount} guests',
+                style: TextStyle(
+                  color: Color(0xFF2E7D32),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ],
         ),
@@ -792,10 +956,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                   Navigator.pop(context); // Close customer details dialog
                   // Navigate to order screen for the first table in the combination
-                  _navigateToOrderScreen(
-                    tables[tableNumbers.first - 1],
-                    tableNumbers.first - 1,
-                  );
+                  _handleTableTap(tableNumbers.first - 1);
                 }
               },
               style: ElevatedButton.styleFrom(
